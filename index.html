@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JBC题目打印工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+        }
+        .upload-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+        .upload-text {
+            font-size: 18px;
+            color: #666;
+        }
+        .upload-hint {
+            font-size: 14px;
+            color: #999;
+            margin-top: 10px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .level-config {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .level-item {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px solid #e0e5ff;
+            transition: all 0.3s ease;
+        }
+        .level-item:hover {
+            border-color: #667eea;
+        }
+        .level-item.special {
+            background: #fff8f0;
+            border-color: #ffd699;
+        }
+        .level-item.optional {
+            background: #f0f8ff;
+            border-color: #90caf9;
+        }
+        .level-item.disabled {
+            opacity: 0.5;
+            background: #f5f5f5;
+        }
+        .level-item.disabled input {
+            pointer-events: none;
+        }
+        .level-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .enable-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            color: #1976d2;
+            cursor: pointer;
+        }
+        .enable-checkbox input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .level-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+        }
+        .level-pages {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .level-pages label {
+            font-size: 14px;
+            color: #666;
+        }
+        .level-pages input {
+            width: 60px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .level-pages input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .page-count {
+            font-size: 12px;
+            color: #999;
+            margin-left: auto;
+        }
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .progress-bar {
+            height: 10px;
+            background: #e0e5ff;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+        }
+        .preview-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+        .preview-item {
+            background: white;
+            border-radius: 8px;
+            padding: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .preview-item img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        .preview-item .page-num {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .result-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .result-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .result-item {
+            background: #f0fff0;
+            border: 2px solid #90EE90;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        .result-item .level-name {
+            color: #2e7d32;
+        }
+        .result-item .download-btn {
+            margin-top: 10px;
+            padding: 8px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .result-item .download-btn:hover {
+            background: #45a049;
+        }
+        .section-title {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+        }
+        .info-box p {
+            color: #2e7d32;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+        }
+        .warning-box p {
+            color: #e65100;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .file-info {
+            display: none;
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .file-info p {
+            color: #1565c0;
+            font-size: 14px;
+        }
+        .download-all-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .download-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JBC题目打印工具</h1>
+
+        <div class="card">
+            <div class="section-title">第一步：上传PDF文件</div>
+            <div class="info-box">
+                <p><strong>使用说明：</strong>请先将PPT文件导出为PDF格式，然后上传PDF文件。<br>
+                在PowerPoint中：文件 → 导出 → 创建PDF/XPS文档</p>
+            </div>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">点击或拖拽PDF文件到此处</div>
+                <div class="upload-hint">支持 .pdf 格式文件</div>
+            </div>
+            <input type="file" id="fileInput" accept=".pdf">
+            <div class="file-info" id="fileInfo">
+                <p><strong>文件名：</strong><span id="fileName"></span></p>
+                <p><strong>总页数：</strong><span id="pageCount"></span> 页</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">第二步：配置级别页面范围</div>
+            <div class="warning-box">
+                <p><strong>注意：</strong>请根据实际PPT的页面顺序配置每个级别的起始页和结束页。<br>
+                默认顺序：启蒙A/B/C → 探索A/B → 入门A/B(8页) → 新秀 → 进阶 → 高手 → PRE(可选，6页)<br>
+                如果PDF没有PRE级别，请取消勾选PRE的"启用"选项。</p>
+            </div>
+            <div class="level-config" id="levelConfig">
+                <!-- 级别配置将通过JS生成 -->
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">第三步：预览和生成</div>
+            <div class="preview-container" id="previewContainer">
+                <p style="margin-bottom: 10px; color: #666;">PDF页面预览：</p>
+                <div class="preview-grid" id="previewGrid"></div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" id="previewBtn" disabled>预览页面</button>
+                <button class="btn btn-primary" id="generateBtn" disabled>生成所有PDF</button>
+            </div>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">处理中...</div>
+            </div>
+        </div>
+
+        <div class="card result-container" id="resultContainer">
+            <div class="section-title">生成结果</div>
+            <div class="result-list" id="resultList"></div>
+            <div style="text-align: center;">
+                <button class="download-all-btn" id="downloadAllBtn">下载全部</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // PDF.js配置
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // 级别配置
+        const levels = [
+            { id: 'qimengA', name: '启蒙级A', pages: 4, start: 1, end: 4 },
+            { id: 'qimengB', name: '启蒙级B', pages: 4, start: 5, end: 8 },
+            { id: 'qimengC', name: '启蒙级C', pages: 4, start: 9, end: 12 },
+            { id: 'tansuoA', name: '探索级A', pages: 4, start: 13, end: 16 },
+            { id: 'tansuoB', name: '探索级B', pages: 4, start: 17, end: 20 },
+            { id: 'rumenA', name: '入门级A', pages: 8, start: 21, end: 28, special: true },
+            { id: 'rumenB', name: '入门级B', pages: 8, start: 29, end: 36, special: true },
+            { id: 'xinxiu', name: '新秀级', pages: 4, start: 37, end: 40 },
+            { id: 'jinjie', name: '进阶级', pages: 4, start: 41, end: 44 },
+            { id: 'gaoshou', name: '高手级', pages: 4, start: 45, end: 48 },
+            { id: 'pre', name: 'PRE', pages: 6, start: 49, end: 54, optional: true }
+        ];
+
+        let pdfDoc = null;
+        let pdfBytes = null;
+        let pdfArrayBuffer = null; // 保存原始ArrayBuffer
+        let pageImages = [];
+        const generatedPDFs = {};
+
+        // 初始化级别配置UI
+        function initLevelConfig() {
+            const container = document.getElementById('levelConfig');
+            container.innerHTML = levels.map(level => {
+                const outputPages = Math.ceil(level.pages / 4);
+                const outputText = `${level.pages}页→${outputPages}页PDF`;
+
+                let extraClass = '';
+                if (level.special) extraClass = 'special';
+                if (level.optional) extraClass = 'optional';
+
+                let checkbox = '';
+                if (level.optional) {
+                    checkbox = `<label class="enable-checkbox">
+                        <input type="checkbox" id="${level.id}_enabled" checked>
+                        启用
+                    </label>`;
+                }
+
+                return `
+                <div class="level-item ${extraClass}" id="${level.id}_container">
+                    <div class="level-header">
+                        <span class="level-name">${level.name} (${outputText})</span>
+                        ${checkbox}
+                    </div>
+                    <div class="level-pages">
+                        <label>起始页:</label>
+                        <input type="number" id="${level.id}_start" value="${level.start}" min="1">
+                        <label>结束页:</label>
+                        <input type="number" id="${level.id}_end" value="${level.end}" min="1">
+                    </div>
+                </div>
+            `}).join('');
+
+            // 为可选级别添加启用/禁用监听
+            levels.filter(l => l.optional).forEach(level => {
+                const checkbox = document.getElementById(`${level.id}_enabled`);
+                const container = document.getElementById(`${level.id}_container`);
+                if (checkbox) {
+                    checkbox.addEventListener('change', (e) => {
+                        container.classList.toggle('disabled', !e.target.checked);
+                    });
+                }
+            });
+        }
+
+        // 上传区域事件
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'application/pdf') {
+                handleFile(file);
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // 处理上传的文件
+        async function handleFile(file) {
+            document.getElementById('fileName').textContent = file.name;
+
+            // 读取文件为 ArrayBuffer 并保存副本
+            const arrayBuffer = await file.arrayBuffer();
+            pdfArrayBuffer = arrayBuffer.slice(0); // 创建副本
+            pdfBytes = new Uint8Array(pdfArrayBuffer);
+
+            try {
+                // 为 PDF.js 创建单独的副本
+                const pdfJsBuffer = arrayBuffer.slice(0);
+                pdfDoc = await pdfjsLib.getDocument({ data: pdfJsBuffer }).promise;
+                const numPages = pdfDoc.numPages;
+                document.getElementById('pageCount').textContent = numPages;
+                document.getElementById('fileInfo').style.display = 'block';
+                document.getElementById('previewBtn').disabled = false;
+                document.getElementById('generateBtn').disabled = false;
+
+                console.log('PDF加载成功，总页数:', numPages);
+                console.log('pdfBytes 大小:', pdfBytes.length);
+
+                // 自动调整页面范围建议
+                autoAdjustPageRanges(numPages);
+            } catch (error) {
+                alert('PDF文件读取失败: ' + error.message);
+                console.error('PDF读取错误:', error);
+            }
+        }
+
+        // 自动调整页面范围
+        function autoAdjustPageRanges(totalPages) {
+            // 可以根据总页数自动推测页面分配
+            // 这里保持默认配置，用户可以手动调整
+        }
+
+        // 预览按钮
+        document.getElementById('previewBtn').addEventListener('click', async () => {
+            if (!pdfDoc) return;
+
+            const previewContainer = document.getElementById('previewContainer');
+            const previewGrid = document.getElementById('previewGrid');
+            previewContainer.style.display = 'block';
+            previewGrid.innerHTML = '<p style="text-align: center; padding: 20px;">加载中...</p>';
+
+            pageImages = [];
+            const numPages = pdfDoc.numPages;
+            let html = '';
+
+            for (let i = 1; i <= numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const scale = 0.5;
+                const viewport = page.getViewport({ scale });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                await page.render({ canvasContext: context, viewport }).promise;
+                const imgData = canvas.toDataURL('image/jpeg', 0.8);
+                pageImages.push(imgData);
+
+                html += `
+                    <div class="preview-item">
+                        <img src="${imgData}" alt="第${i}页">
+                        <div class="page-num">第 ${i} 页</div>
+                    </div>
+                `;
+            }
+
+            previewGrid.innerHTML = html;
+        });
+
+        // 生成PDF按钮
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            if (!pdfDoc) {
+                alert('请先上传PDF文件');
+                return;
+            }
+            if (!pdfBytes) {
+                alert('PDF数据未加载，请重新上传文件');
+                return;
+            }
+
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultList = document.getElementById('resultList');
+
+            progressContainer.style.display = 'block';
+            resultContainer.style.display = 'none';
+            resultList.innerHTML = '';
+            progressFill.style.width = '0%';
+
+            // 清空之前生成的PDF
+            for (let key in generatedPDFs) {
+                delete generatedPDFs[key];
+            }
+
+            const totalPages = pdfDoc.numPages;
+            console.log('PDF总页数:', totalPages);
+
+            const totalLevels = levels.length;
+            let completedLevels = 0;
+            let errorMessages = [];
+
+            for (const level of levels) {
+                // 检查可选级别是否启用
+                if (level.optional) {
+                    const checkbox = document.getElementById(`${level.id}_enabled`);
+                    if (checkbox && !checkbox.checked) {
+                        console.log(`${level.name} 已禁用，跳过`);
+                        completedLevels++;
+                        progressFill.style.width = `${(completedLevels / totalLevels) * 100}%`;
+                        continue;
+                    }
+                }
+
+                progressText.textContent = `正在处理: ${level.name}...`;
+
+                const startPage = parseInt(document.getElementById(`${level.id}_start`).value);
+                const endPage = parseInt(document.getElementById(`${level.id}_end`).value);
+
+                console.log(`处理 ${level.name}: 页面 ${startPage} - ${endPage}`);
+
+                // 验证页面范围
+                if (startPage > totalPages || endPage > totalPages) {
+                    console.warn(`${level.name} 页面范围超出PDF总页数(${totalPages})，跳过`);
+                    errorMessages.push(`${level.name}: 页面范围超出`);
+                    completedLevels++;
+                    progressFill.style.width = `${(completedLevels / totalLevels) * 100}%`;
+                    continue;
+                }
+
+                if (startPage > endPage || startPage < 1) {
+                    console.warn(`${level.name} 页面范围无效，跳过`);
+                    errorMessages.push(`${level.name}: 页面范围无效`);
+                    completedLevels++;
+                    progressFill.style.width = `${(completedLevels / totalLevels) * 100}%`;
+                    continue;
+                }
+
+                try {
+                    const pdfData = await generateLevelPDF(level, startPage, endPage);
+                    if (pdfData && pdfData.length > 0) {
+                        generatedPDFs[level.id] = {
+                            name: level.name,
+                            data: pdfData,
+                            fileName: `JBC_${level.name}.pdf`
+                        };
+                        console.log(`${level.name} 生成成功，大小: ${pdfData.length} bytes`);
+                    } else {
+                        console.error(`${level.name} 生成的PDF为空`);
+                        errorMessages.push(`${level.name}: 生成为空`);
+                    }
+                } catch (error) {
+                    console.error(`生成 ${level.name} 失败:`, error);
+                    errorMessages.push(`${level.name}: ${error.message}`);
+                }
+
+                completedLevels++;
+                progressFill.style.width = `${(completedLevels / totalLevels) * 100}%`;
+            }
+
+            const successCount = Object.keys(generatedPDFs).length;
+            if (successCount > 0) {
+                progressText.textContent = `完成！成功生成 ${successCount} 个PDF`;
+                progressText.style.color = '#4CAF50';
+            } else {
+                progressText.textContent = '生成失败，请检查页面范围设置（确保不超过PDF总页数）';
+                progressText.style.color = '#f44336';
+            }
+
+            if (errorMessages.length > 0) {
+                console.warn('部分级别处理失败:', errorMessages);
+                // 显示错误信息
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'margin-top: 15px; padding: 15px; background: #ffebee; border-radius: 8px; color: #c62828;';
+                errorDiv.innerHTML = '<strong>以下级别处理失败（页面范围超出或无效）：</strong><br>' + errorMessages.join('<br>');
+                progressContainer.appendChild(errorDiv);
+            }
+
+            // 显示结果
+            if (successCount > 0) {
+                resultContainer.style.display = 'block';
+                resultList.innerHTML = Object.entries(generatedPDFs).map(([id, pdf]) => `
+                    <div class="result-item">
+                        <div class="level-name">${pdf.name}</div>
+                        <button class="download-btn" onclick="window.downloadPDF('${id}')">下载PDF</button>
+                    </div>
+                `).join('');
+            }
+        });
+
+        // 生成单个级别的PDF（4页拼1页）
+        async function generateLevelPDF(level, startPage, endPage) {
+            console.log(`generateLevelPDF 开始: ${level.name}, 页面 ${startPage}-${endPage}`);
+
+            if (typeof PDFLib === 'undefined') {
+                throw new Error('PDF-lib 库未加载');
+            }
+
+            if (!pdfBytes || pdfBytes.length === 0) {
+                throw new Error('PDF数据为空，请重新上传文件');
+            }
+
+            const { PDFDocument } = PDFLib;
+
+            // 创建 pdfBytes 的副本用于 pdf-lib
+            const pdfBytesCopy = new Uint8Array(pdfBytes);
+            console.log('创建PDF字节副本，大小:', pdfBytesCopy.length);
+
+            // 加载原始PDF
+            console.log('加载原始PDF...');
+            const srcPdfDoc = await PDFDocument.load(pdfBytesCopy);
+            const srcPageCount = srcPdfDoc.getPageCount();
+            console.log('原始PDF页数:', srcPageCount);
+
+            const newPdfDoc = await PDFDocument.create();
+
+            // 计算需要生成几页（每4页原始页面合成1页）
+            const pageCount = endPage - startPage + 1;
+            const outputPages = Math.ceil(pageCount / 4);
+            console.log(`需要处理 ${pageCount} 页，输出 ${outputPages} 页`);
+
+            // A4纸尺寸 (595 x 842 点)
+            const pageWidth = 842; // 横向A4
+            const pageHeight = 595;
+
+            for (let outputPageIndex = 0; outputPageIndex < outputPages; outputPageIndex++) {
+                console.log(`创建输出页 ${outputPageIndex + 1}/${outputPages}`);
+                const newPage = newPdfDoc.addPage([pageWidth, pageHeight]);
+
+                // 每页放4个小页面（2x2布局）
+                const positions = [
+                    { x: 0, y: pageHeight / 2 },           // 左上
+                    { x: pageWidth / 2, y: pageHeight / 2 }, // 右上
+                    { x: 0, y: 0 },                         // 左下
+                    { x: pageWidth / 2, y: 0 }             // 右下
+                ];
+
+                for (let i = 0; i < 4; i++) {
+                    const srcPageNum = startPage + outputPageIndex * 4 + i;
+                    if (srcPageNum > endPage || srcPageNum > srcPageCount) {
+                        console.log(`页面 ${srcPageNum} 超出范围，跳过`);
+                        break;
+                    }
+
+                    console.log(`嵌入页面 ${srcPageNum}`);
+                    const [embeddedPage] = await newPdfDoc.embedPdf(srcPdfDoc, [srcPageNum - 1]);
+                    const { width, height } = embeddedPage.size();
+
+                    // 计算缩放比例以适应1/4页面
+                    const cellWidth = pageWidth / 2;
+                    const cellHeight = pageHeight / 2;
+                    const scale = Math.min(cellWidth / width, cellHeight / height);
+
+                    // 居中放置
+                    const scaledWidth = width * scale;
+                    const scaledHeight = height * scale;
+                    const offsetX = (cellWidth - scaledWidth) / 2;
+                    const offsetY = (cellHeight - scaledHeight) / 2;
+
+                    newPage.drawPage(embeddedPage, {
+                        x: positions[i].x + offsetX,
+                        y: positions[i].y + offsetY,
+                        width: scaledWidth,
+                        height: scaledHeight
+                    });
+                }
+            }
+
+            console.log('保存PDF...');
+            const pdfData = await newPdfDoc.save();
+            console.log(`${level.name} PDF生成完成，大小: ${pdfData.length}`);
+            return pdfData;
+        }
+
+        // 下载单个PDF - 挂载到window对象以便onclick调用
+        window.downloadPDF = function(levelId) {
+            console.log('下载PDF:', levelId, generatedPDFs);
+            const pdf = generatedPDFs[levelId];
+            if (!pdf) {
+                console.error('未找到PDF数据:', levelId);
+                alert('未找到PDF数据，请先点击"生成所有PDF"按钮');
+                return;
+            }
+
+            const blob = new Blob([pdf.data], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = pdf.fileName;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        };
+
+        // 下载全部PDF
+        document.getElementById('downloadAllBtn').addEventListener('click', () => {
+            const levelIds = Object.keys(generatedPDFs);
+            if (levelIds.length === 0) {
+                alert('没有可下载的PDF，请先生成');
+                return;
+            }
+            levelIds.forEach((levelId, index) => {
+                setTimeout(() => window.downloadPDF(levelId), index * 300);
+            });
+        });
+
+        // 初始化
+        initLevelConfig();
+    </script>
+</body>
+</html>
