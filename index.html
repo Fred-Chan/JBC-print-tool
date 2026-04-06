@@ -151,6 +151,36 @@
         .file-info strong {
             color: #333;
         }
+        .prefix-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .prefix-input-group label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            white-space: nowrap;
+        }
+        .prefix-input-group input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #28a745;
+            border-radius: 4px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        .prefix-input-group input:focus {
+            outline: none;
+            border-color: #218838;
+            box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
+        }
+        .prefix-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
 
         /* 按钮组 */
         .btn-group {
@@ -473,6 +503,11 @@
                 <div class="file-info" id="fileInfo">
                     <p><strong>文件名：</strong><span id="fileName"></span></p>
                     <p><strong>总页数：</strong><span id="pageCount"></span> 页</p>
+                    <div class="prefix-input-group">
+                        <label>输出文件名前缀：</label>
+                        <input type="text" id="filePrefix" placeholder="输入文件名前缀">
+                    </div>
+                    <p class="prefix-hint">生成的文件名格式：[前缀]_[级别名].pdf</p>
                 </div>
             </div>
         </div>
@@ -662,6 +697,10 @@
         async function handleFile(file) {
             document.getElementById('fileName').textContent = file.name;
 
+            // 自动设置文件名前缀（去掉.pdf扩展名）
+            const prefix = file.name.replace(/\.pdf$/i, '');
+            document.getElementById('filePrefix').value = prefix;
+
             const arrayBuffer = await file.arrayBuffer();
             pdfArrayBuffer = arrayBuffer.slice(0);
             pdfBytes = new Uint8Array(pdfArrayBuffer);
@@ -740,6 +779,7 @@
             document.getElementById('generateBtn').disabled = true;
             document.getElementById('statTotalPages').textContent = '-';
             document.getElementById('statGenerated').textContent = '0';
+            document.getElementById('filePrefix').value = '';
             uploadArea.classList.remove('has-file');
             fileInput.value = '';
 
@@ -777,6 +817,9 @@
             let completedLevels = 0;
             let errorMessages = [];
 
+            // 获取用户自定义的文件名前缀
+            const filePrefix = document.getElementById('filePrefix').value.trim() || 'JBC';
+
             for (const level of levels) {
                 if (level.optional) {
                     const checkbox = document.getElementById(`${level.id}_enabled`);
@@ -812,7 +855,7 @@
                         generatedPDFs[level.id] = {
                             name: level.name,
                             data: pdfData,
-                            fileName: `JBC_${level.name}.pdf`
+                            fileName: `${filePrefix}_${level.name}.pdf`
                         };
                     } else {
                         errorMessages.push(`${level.name}: 生成为空`);
